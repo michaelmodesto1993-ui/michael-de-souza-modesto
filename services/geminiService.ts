@@ -35,6 +35,8 @@ export async function parseBankStatementWithAI(statementText: string): Promise<{
                     required: ["date", "description", "amount"],
                 },
             },
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 192 },
         },
     });
 
@@ -77,6 +79,8 @@ export async function parseChartOfAccountsWithAI(fileContent: string): Promise<A
                     required: ["id", "name"],
                 },
             },
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 192 },
         },
     });
 
@@ -89,6 +93,28 @@ export async function parseChartOfAccountsWithAI(fileContent: string): Promise<A
         }
         throw new Error("O JSON retornado não corresponde ao esquema esperado.");
     } catch (e) {
+        console.warn("Falha ao parsear JSON, tentando reparar. Erro original:", e);
+
+        try {
+            // Attempt to repair by finding the last complete object in a potential array
+            const startIndex = jsonText.indexOf('[');
+            const lastBraceIndex = jsonText.lastIndexOf('}');
+            
+            if (startIndex !== -1 && lastBraceIndex > startIndex) {
+                // We have what looks like an array with at least one object.
+                const potentialJsonArray = jsonText.substring(startIndex, lastBraceIndex + 1) + ']';
+                const result = JSON.parse(potentialJsonArray);
+                
+                if (Array.isArray(result) && result.every(item => typeof item === 'object' && 'id' in item && 'name' in item)) {
+                    console.log("JSON reparado com sucesso!");
+                    return result;
+                }
+            }
+        } catch (repairError) {
+            console.error("A tentativa de reparo do JSON falhou:", repairError);
+            // Fall through to throw the original error
+        }
+        
         console.error("Erro ao fazer parse do plano de contas da IA:", e);
         throw new Error("A IA retornou um formato de JSON inválido para o plano de contas.");
     }
@@ -157,7 +183,9 @@ export async function reconcileTransactions(
                     },
                     required: ["transactionId", "accountId"],
                 }
-            }
+            },
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 192 },
         },
     });
 

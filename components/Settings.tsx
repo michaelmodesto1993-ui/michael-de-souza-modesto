@@ -2,6 +2,14 @@ import React, { useState, useCallback } from 'react';
 import { Account } from '../types';
 import { UploadIcon } from './Icons';
 import { parseChartOfAccountsWithAI } from '../services/geminiService';
+import * as XLSX from 'xlsx';
+
+declare global {
+    interface Window {
+        XLSX: typeof XLSX;
+    }
+}
+const XLSX_ = window.XLSX;
 
 interface SettingsProps {
     spedAccounts: Account[];
@@ -25,8 +33,20 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
         setLoading(true);
         setError(null);
         try {
-            const text = await file.text();
-            const parsedAccounts = await parseChartOfAccountsWithAI(text);
+            let fileContent: string;
+            const fileName = file.name.toLowerCase();
+
+            if (fileName.endsWith('.xlsx')) {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX_.read(data);
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                fileContent = XLSX_.utils.sheet_to_csv(worksheet);
+            } else { // For .csv, .txt, .ofx
+                fileContent = await file.text();
+            }
+
+            const parsedAccounts = await parseChartOfAccountsWithAI(fileContent);
             onCustomAccountsChange(parsedAccounts);
         } catch (err: any) {
             setError(err.message || "Não foi possível processar o arquivo do plano de contas.");
@@ -88,7 +108,7 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
                         </div>
                     ) : (
                         <div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Carregue um arquivo (CSV, TXT) com seu próprio plano de contas. A IA irá analisá-lo e preencher a lista abaixo.</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Carregue um arquivo (XLSX, CSV, OFX, TXT) com seu próprio plano de contas. A IA irá analisá-lo e preencher a lista abaixo.</p>
                             
                             <label htmlFor="coa-upload" className="relative flex justify-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-600">
                                 {loading ? (
@@ -100,7 +120,7 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
                                     </div>
                                 )}
                             </label>
-                            <input id="coa-upload" type="file" className="hidden" onChange={handleFileUpload} accept=".csv,.txt" />
+                            <input id="coa-upload" type="file" className="hidden" onChange={handleFileUpload} accept=".csv,.txt,.xlsx,.ofx" />
                             
                             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                             

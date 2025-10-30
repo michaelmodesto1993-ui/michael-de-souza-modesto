@@ -1,5 +1,6 @@
 import React from 'react';
 import { Transaction, Account, ReconciliationStatus } from '../types';
+import AccountSelector from './AccountSelector';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -59,18 +60,11 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ transactions, accou
                       <StatusBadge status={tx.reconciliation.status} />
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
-                      <select
-                        value={tx.reconciliation.accountId || ''}
-                        onChange={(e) => onUpdateTransaction(tx.id, e.target.value)}
-                        className="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 bg-inherit text-slate-900 dark:text-slate-200 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-teal-600 sm:text-sm sm:leading-6"
-                      >
-                        <option value="">Selecione uma conta...</option>
-                        {accounts.map((acc) => (
-                          <option key={acc.id} value={acc.id}>
-                            {acc.id} - {acc.name}
-                          </option>
-                        ))}
-                      </select>
+                      <AccountSelector
+                        value={tx.reconciliation.accountId}
+                        onChange={(accountId) => onUpdateTransaction(tx.id, accountId)}
+                        accounts={accounts}
+                      />
                     </td>
                   </tr>
                 ))}
