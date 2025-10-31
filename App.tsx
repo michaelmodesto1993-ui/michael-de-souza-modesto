@@ -17,6 +17,8 @@ const LEARNING_EXAMPLES_KEY = 'conciliaFacil_learningExamples';
 const CUSTOM_ACCOUNTS_KEY = 'conciliaFacil_customAccounts';
 const ACTIVE_PLAN_KEY = 'conciliaFacil_activePlan';
 const AVATAR_URL_KEY = 'conciliaFacil_avatarUrl';
+const API_KEY_KEY = 'conciliaFacil_apiKey';
+
 
 function App() {
   const [currentPage, setPage] = useState<Page>('dashboard');
@@ -28,6 +30,8 @@ function App() {
   
   const [learningExamples, setLearningExamples] = useState<LearningExample[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(AVATAR_OPTIONS[0]);
+  const [apiKey, setApiKey] = useState<string>('');
+
 
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -48,6 +52,9 @@ function App() {
 
       const storedAvatar = localStorage.getItem(AVATAR_URL_KEY);
       if (storedAvatar) setAvatarUrl(storedAvatar);
+
+      const storedApiKey = localStorage.getItem(API_KEY_KEY);
+      if (storedApiKey) setApiKey(storedApiKey);
 
     } catch (e) {
       console.error("Failed to load data from localStorage", e);
@@ -73,6 +80,11 @@ function App() {
   const handleSetAvatarUrl = (url: string) => {
     setAvatarUrl(url);
     localStorage.setItem(AVATAR_URL_KEY, url);
+  };
+  
+  const handleSetApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem(API_KEY_KEY, key);
   };
 
   const handleDeleteLearningExample = (exampleId: string) => {
@@ -201,6 +213,8 @@ function App() {
         return <Adjustments 
           avatarUrl={avatarUrl}
           onAvatarChange={handleSetAvatarUrl}
+          apiKey={apiKey}
+          onApiKeyChange={handleSetApiKey}
         />;
       default:
         return <div>Página não encontrada</div>;

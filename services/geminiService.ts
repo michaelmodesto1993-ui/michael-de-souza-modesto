@@ -7,9 +7,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Account, LearningExample, Transaction, ReconciliationStatus } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const API_KEY_KEY = 'conciliaFacil_apiKey';
+
+// Helper function to get an initialized AI client
+function getAiClient(): GoogleGenAI {
+    const apiKey = localStorage.getItem(API_KEY_KEY);
+    if (!apiKey) {
+        throw new Error("Chave de API não configurada. Por favor, adicione sua chave de API na página de Ajustes.");
+    }
+    return new GoogleGenAI({ apiKey });
+}
 
 export async function parseBankStatementWithAI(statementText: string): Promise<{ date: string, description: string, amount: number }[]> {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
     
     const prompt = `Analise o seguinte extrato bancário e extraia as transações. Retorne um array JSON de objetos, onde cada objeto representa uma transação e tem as chaves "date" (no formato "YYYY-MM-DD"), "description" (uma descrição limpa), e "amount" (um número, negativo para débitos, positivo para créditos).
@@ -51,6 +61,7 @@ export async function parseBankStatementWithAI(statementText: string): Promise<{
 }
 
 export async function parseChartOfAccountsWithAI(fileContent: string): Promise<Account[]> {
+    const ai = getAiClient();
     const model = 'gemini-2.5-flash';
 
     const prompt = `Você é um especialista em contabilidade. Analise o seguinte texto, que contém um plano de contas, e extraia todas as contas para um formato JSON. O formato do texto pode variar (CSV, lista, etc.). Retorne um array de objetos, onde cada objeto tem as chaves "id" (o código da conta) e "name" (o nome da conta).
@@ -131,6 +142,7 @@ export async function reconcileTransactions(
     accounts: Account[],
     learningExamples: LearningExample[]
 ): Promise<ReconciliationSuggestion[]> {
+    const ai = getAiClient();
     const model = 'gemini-2.5-pro';
 
     const examplesString = learningExamples.length > 0 ? `
