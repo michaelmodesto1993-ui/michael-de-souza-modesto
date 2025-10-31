@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogoIcon, DashboardIcon, ImportIcon, SettingsIcon, AdjustmentsIcon } from './Icons';
+import { LogoIcon, DashboardIcon, ImportIcon, SettingsIcon, AdjustmentsIcon, BrainCircuitIcon } from './Icons';
 import { Page } from '../App';
 
 interface SidebarProps {
@@ -37,6 +37,7 @@ const NavLink: React.FC<{
 const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Painel de Controle', icon: <DashboardIcon className="w-5 h-5" /> },
     { id: 'import', label: 'Importações', icon: <ImportIcon className="w-5 h-5" /> },
+    { id: 'history', label: 'Aprendizado IA', icon: <BrainCircuitIcon className="w-5 h-5" /> },
     { id: 'settings', label: 'Configurações', icon: <SettingsIcon className="w-5 h-5" /> },
     { id: 'adjustments', label: 'Ajustes', icon: <AdjustmentsIcon className="w-5 h-5" /> },
 ];

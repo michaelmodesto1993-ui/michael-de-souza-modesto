@@ -4,12 +4,13 @@ import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import Adjustments from './components/Adjustments';
 import Import from './components/Import';
+import History from './components/History';
 
 import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType } from './types';
 import { SPED_CHART_OF_ACCOUNTS, AVATAR_OPTIONS } from './constants';
 import { reconcileTransactions } from './services/geminiService';
 
-export type Page = 'dashboard' | 'import' | 'settings' | 'adjustments';
+export type Page = 'dashboard' | 'import' | 'history' | 'settings' | 'adjustments';
 type AccountPlan = 'sped' | 'custom';
 
 const LEARNING_EXAMPLES_KEY = 'conciliaFacil_learningExamples';
@@ -74,6 +75,14 @@ function App() {
     localStorage.setItem(AVATAR_URL_KEY, url);
   };
 
+  const handleDeleteLearningExample = (exampleId: string) => {
+    setLearningExamples(prev => {
+        const updated = prev.filter(ex => ex.id !== exampleId);
+        localStorage.setItem(LEARNING_EXAMPLES_KEY, JSON.stringify(updated));
+        return updated;
+    });
+  };
+
   const handleUpdateTransaction = useCallback((transactionId: string, accountId: string | null) => {
     setTransactions(currentTransactions => {
       const newTransactions = currentTransactions.map(tx => {
@@ -87,21 +96,33 @@ function App() {
           };
 
           if (accountId) {
-            const newExample: LearningExample = {
-              description: updatedTx.description,
-              amount: updatedTx.type === TransactionType.DEBIT ? -updatedTx.amount : updatedTx.amount,
-              type: updatedTx.type,
-              accountId: accountId,
-            };
-            
             setLearningExamples(prev => {
-                const isDuplicate = prev.some(ex => JSON.stringify(ex) === JSON.stringify(newExample));
-                if (!isDuplicate) {
-                    const updated = [...prev, newExample];
-                    localStorage.setItem(LEARNING_EXAMPLES_KEY, JSON.stringify(updated));
-                    return updated;
+                const existingExampleIndex = prev.findIndex(ex => ex.description.toLowerCase() === updatedTx.description.toLowerCase());
+                
+                const updatedExamples = [...prev];
+
+                if (existingExampleIndex !== -1) {
+                    // Update existing rule
+                    updatedExamples[existingExampleIndex] = {
+                        ...updatedExamples[existingExampleIndex],
+                        accountId: accountId,
+                        amount: updatedTx.type === TransactionType.DEBIT ? -updatedTx.amount : updatedTx.amount,
+                        type: updatedTx.type,
+                    };
+                } else {
+                    // Add new rule
+                    const newExample: LearningExample = {
+                        id: `learn-${Date.now()}-${Math.random()}`,
+                        description: updatedTx.description,
+                        amount: updatedTx.type === TransactionType.DEBIT ? -updatedTx.amount : updatedTx.amount,
+                        type: updatedTx.type,
+                        accountId: accountId,
+                    };
+                    updatedExamples.push(newExample);
                 }
-                return prev;
+                
+                localStorage.setItem(LEARNING_EXAMPLES_KEY, JSON.stringify(updatedExamples));
+                return updatedExamples;
             });
           }
           return updatedTx;
@@ -161,6 +182,12 @@ function App() {
             setLoading={setLoading}
             setLoadingMessage={setLoadingMessage}
             setError={setError}
+        />;
+      case 'history':
+        return <History 
+            learningExamples={learningExamples}
+            accounts={accounts}
+            onDeleteLearningExample={handleDeleteLearningExample}
         />;
       case 'settings':
         return <Settings

@@ -28,6 +28,7 @@ export interface Transaction {
 }
 
 export type LearningExample = {
+  id: string;
   description: string;
   amount: number;
   type: TransactionType;

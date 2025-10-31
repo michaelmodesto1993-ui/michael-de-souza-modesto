@@ -134,8 +134,8 @@ export async function reconcileTransactions(
     const model = 'gemini-2.5-pro';
 
     const examplesString = learningExamples.length > 0 ? `
-    Aqui estão alguns exemplos de como conciliar transações com base em aprendizado prévio:
-    ${learningExamples.map(ex => `- Descrição "${ex.description}", Valor ${ex.amount}, Tipo ${ex.type} => Conta ${ex.accountId} (${accounts.find(a => a.id === ex.accountId)?.name})`).join('\n')}
+    Use as seguintes regras, baseadas em correções manuais do usuário, como prioridade máxima para a conciliação. Estas são as "regras de ouro" e devem ser seguidas:
+    ${learningExamples.map(ex => `- Para transações com descrição similar a "${ex.description}", use a conta ${ex.accountId} (${accounts.find(a => a.id === ex.accountId)?.name})`).join('\n')}
     ` : '';
 
     const accountsString = accounts.map(acc => `- ${acc.id}: ${acc.name}`).join('\n');
@@ -150,10 +150,11 @@ export async function reconcileTransactions(
 
     const prompt = `
     Você é um assistente de contabilidade especialista. Sua tarefa é sugerir a conta contábil correta para cada uma das transações bancárias a seguir, com base no plano de contas brasileiro (SPED) fornecido.
-
-    Plano de Contas Disponível:
-    ${accountsString}
+    
     ${examplesString}
+
+    Plano de Contas Disponível para consulta (use as regras acima como prioridade):
+    ${accountsString}
 
     Transações para Conciliar:
     ${JSON.stringify(transactionsToReconcile, null, 2)}
