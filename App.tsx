@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -11,6 +12,8 @@ import Login from './components/Login';
 import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType, SupportingDocument, UserProfile } from './types';
 import { SPED_CHART_OF_ACCOUNTS, AVATAR_OPTIONS } from './constants';
 import { reconcileTransactions } from './services/geminiService';
+import { DashboardIcon, ImportIcon, BrainCircuitIcon, SettingsIcon, AdjustmentsIcon, MenuIcon } from './components/Icons';
+
 
 export type Page = 'dashboard' | 'import' | 'history' | 'settings' | 'adjustments';
 type AccountPlan = 'sped' | 'custom';
@@ -21,10 +24,18 @@ const ACTIVE_PLAN_KEY = 'conciliaFacil_activePlan';
 const AVATAR_URL_KEY = 'conciliaFacil_avatarUrl';
 const USER_PROFILE_KEY = 'conciliaFacil_userProfile';
 
+const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
+    { id: 'dashboard', label: 'Painel de Controle', icon: <DashboardIcon className="w-5 h-5" /> },
+    { id: 'import', label: 'Importações', icon: <ImportIcon className="w-5 h-5" /> },
+    { id: 'history', label: 'Aprendizado IA', icon: <BrainCircuitIcon className="w-5 h-5" /> },
+    { id: 'settings', label: 'Configurações', icon: <SettingsIcon className="w-5 h-5" /> },
+    { id: 'adjustments', label: 'Ajustes', icon: <AdjustmentsIcon className="w-5 h-5" /> },
+];
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentPage, setPage] = useState<Page>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   
   const [spedAccounts] = useState<Account[]>(SPED_CHART_OF_ACCOUNTS);
@@ -65,7 +76,6 @@ function App() {
       const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
       if (storedProfile) setUserProfile(JSON.parse(storedProfile));
 
-    // Fix: Changed catch variable from 'e' to 'error' to resolve "Cannot find name 'e'" error.
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     }
@@ -79,7 +89,7 @@ function App() {
   const handleTransactionsParsed = (parsedTransactions: Transaction[]) => {
     setTransactions(parsedTransactions);
     setError(null);
-    setPage('dashboard'); // Navigate to dashboard after import
+    setPage('dashboard');
   };
 
   const handleSetCustomAccounts = (newAccounts: Account[]) => {
@@ -158,7 +168,6 @@ function App() {
                 const updatedExamples = [...prev];
 
                 if (existingExampleIndex !== -1) {
-                    // Update existing rule
                     updatedExamples[existingExampleIndex] = {
                         ...updatedExamples[existingExampleIndex],
                         accountId: accountId,
@@ -166,7 +175,6 @@ function App() {
                         type: updatedTx.type,
                     };
                 } else {
-                    // Add new rule
                     const newExample: LearningExample = {
                         id: `learn-${Date.now()}-${Math.random()}`,
                         description: updatedTx.description,
@@ -199,7 +207,6 @@ function App() {
       )
     );
     
-    // Update learning examples that were based on the old description
     setLearningExamples(prev => {
       const updated = prev.map(ex => {
           if (ex.description === originalTransaction.description) {
@@ -291,36 +298,75 @@ function App() {
           onUserProfileChange={handleSetUserProfile}
         />;
       default:
-        return <div>Página não encontrada</div>;
+        return <Dashboard 
+            transactions={transactions}
+            accounts={accounts}
+            onUpdateTransaction={handleUpdateTransaction}
+            onUpdateTransactionDescription={handleUpdateTransactionDescription}
+            onReconcile={handleReconcile}
+            setPage={setPage}
+            supportingDocuments={supportingDocuments}
+            onSupportingDocumentsUpload={handleAddSupportingDocuments}
+            onRemoveSupportingDocument={handleRemoveSupportingDocument}
+        />;
     }
   };
 
   if (!isAuthenticated) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
+  
+  const currentPageLabel = navItems.find(item => item.id === currentPage)?.label || 'Painel de Controle';
 
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-50 font-sans">
-      <Sidebar currentPage={currentPage} setPage={setPage} avatarUrl={avatarUrl} userProfile={userProfile} />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-        {loading && (
-          <div className="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
-              <p className="mt-4 text-slate-700 dark:text-slate-300 font-semibold">{loadingMessage}</p>
+      <Sidebar 
+        currentPage={currentPage} 
+        setPage={setPage} 
+        avatarUrl={avatarUrl} 
+        userProfile={userProfile} 
+        navItems={navItems}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+      />
+
+       {isSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-30" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        ></div>
+      )}
+
+      <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-slate-900">
+        <header className="lg:hidden sticky top-0 z-20 flex items-center justify-between h-16 px-4 sm:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+            <button onClick={() => setIsSidebarOpen(true)} aria-label="Abrir menu">
+                <MenuIcon className="w-6 h-6 text-slate-500 dark:text-slate-400" />
+            </button>
+            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{currentPageLabel}</h1>
+            <div className="w-6"></div>
+        </header>
+        
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
+            {loading && (
+            <div className="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
+                <p className="mt-4 text-slate-700 dark:text-slate-300 font-semibold">{loadingMessage}</p>
+                </div>
             </div>
-          </div>
-        )}
-        {error && (
-            <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
-                <strong className="font-bold">Erro!</strong>
-                <span className="block sm:inline ml-2">{error}</span>
-                <button onClick={() => setError(null)} className="absolute top-0 bottom-0 right-0 px-4 py-3">
-                    <span className="text-2xl">×</span>
-                </button>
-            </div>
-        )}
-        {renderPage()}
+            )}
+            {error && (
+                <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+                    <strong className="font-bold">Erro!</strong>
+                    <span className="block sm:inline ml-2">{error}</span>
+                    <button onClick={() => setError(null)} className="absolute top-0 bottom-0 right-0 px-4 py-3">
+                        <span className="text-2xl">×</span>
+                    </button>
+                </div>
+            )}
+            {renderPage()}
+        </div>
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogoIcon, DashboardIcon, ImportIcon, SettingsIcon, AdjustmentsIcon, BrainCircuitIcon } from './Icons';
+import { LogoIcon, XIcon } from './Icons';
 import { Page } from '../App';
 import { UserProfile } from '../types';
 
@@ -8,6 +8,9 @@ interface SidebarProps {
   setPage: (page: Page) => void;
   avatarUrl: string;
   userProfile: UserProfile;
+  navItems: { id: Page; label: string; icon: React.ReactNode }[];
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }
 
 const Avatar: React.FC<{ src: string }> = ({ src }) => (
@@ -36,20 +39,23 @@ const NavLink: React.FC<{
   );
 };
 
-const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Painel de Controle', icon: <DashboardIcon className="w-5 h-5" /> },
-    { id: 'import', label: 'Importações', icon: <ImportIcon className="w-5 h-5" /> },
-    { id: 'history', label: 'Aprendizado IA', icon: <BrainCircuitIcon className="w-5 h-5" /> },
-    { id: 'settings', label: 'Configurações', icon: <SettingsIcon className="w-5 h-5" /> },
-    { id: 'adjustments', label: 'Ajustes', icon: <AdjustmentsIcon className="w-5 h-5" /> },
-];
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl, userProfile, navItems, isSidebarOpen, setIsSidebarOpen }) => {
+  
+  const handleNavClick = (page: Page) => {
+    setPage(page);
+    setIsSidebarOpen(false); // Close sidebar on mobile after navigation
+  };
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl, userProfile }) => {
   return (
-    <aside className="flex flex-col w-64 bg-slate-900 text-white h-full shadow-2xl flex-shrink-0">
-      <div className="flex items-center justify-center h-20 border-b border-slate-700/50">
-        <LogoIcon className="w-8 h-8 text-teal-400" />
-        <h1 className="text-xl font-bold ml-2 text-slate-100">ConciliaFácil</h1>
+    <aside className={`fixed inset-y-0 left-0 z-40 flex flex-col w-64 bg-slate-900 text-white h-full shadow-2xl flex-shrink-0 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="flex items-center justify-between h-20 border-b border-slate-700/50 px-4">
+        <div className="flex items-center">
+          <LogoIcon className="w-8 h-8 text-teal-400" />
+          <h1 className="text-xl font-bold ml-2 text-slate-100">ConciliaFácil</h1>
+        </div>
+        <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-slate-400 hover:text-white" aria-label="Fechar menu">
+            <XIcon className="w-6 h-6" />
+        </button>
       </div>
       <nav className="flex-1 p-4 space-y-2">
         <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menu</p>
@@ -59,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl, user
                 icon={item.icon}
                 label={item.label}
                 isActive={currentPage === item.id}
-                onClick={() => setPage(item.id)}
+                onClick={() => handleNavClick(item.id)}
             />
         ))}
       </nav>
