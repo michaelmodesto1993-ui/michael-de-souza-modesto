@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -5,6 +6,7 @@ import Settings from './components/Settings';
 import Adjustments from './components/Adjustments';
 import Import from './components/Import';
 import History from './components/History';
+import Login from './components/Login';
 
 import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType, SupportingDocument, UserProfile } from './types';
 import { SPED_CHART_OF_ACCOUNTS, AVATAR_OPTIONS } from './constants';
@@ -21,6 +23,7 @@ const USER_PROFILE_KEY = 'conciliaFacil_userProfile';
 
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentPage, setPage] = useState<Page>('dashboard');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   
@@ -41,6 +44,11 @@ function App() {
   const accounts = activePlan === 'sped' ? spedAccounts : customAccounts;
   
   useEffect(() => {
+    const loggedIn = sessionStorage.getItem('isAuthenticated') === 'true';
+    if (loggedIn) {
+      setIsAuthenticated(true);
+    }
+
     try {
       const storedLearning = localStorage.getItem(LEARNING_EXAMPLES_KEY);
       if (storedLearning) setLearningExamples(JSON.parse(storedLearning));
@@ -57,10 +65,16 @@ function App() {
       const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
       if (storedProfile) setUserProfile(JSON.parse(storedProfile));
 
-    } catch (e: any) {
-      console.error("Failed to load data from localStorage", e);
+    // Fix: Changed catch variable from 'e' to 'error' to resolve "Cannot find name 'e'" error.
+    } catch (error) {
+      console.error("Failed to load data from localStorage", error);
     }
   }, []);
+
+  const handleLoginSuccess = () => {
+    sessionStorage.setItem('isAuthenticated', 'true');
+    setIsAuthenticated(true);
+  };
 
   const handleTransactionsParsed = (parsedTransactions: Transaction[]) => {
     setTransactions(parsedTransactions);
@@ -280,6 +294,10 @@ function App() {
         return <div>Página não encontrada</div>;
     }
   };
+
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-50 font-sans">
