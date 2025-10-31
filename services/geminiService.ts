@@ -7,10 +7,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Account, LearningExample, Transaction, ReconciliationStatus, SupportingDocument } from '../types';
 
+const MANUAL_API_KEY_KEY = 'conciliaFacil_manualApiKey';
+
 // Helper function to get an initialized AI client
 function getAiClient(): GoogleGenAI {
-    // FIX: Per coding guidelines, API key must come from process.env.API_KEY
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const manualApiKey = localStorage.getItem(MANUAL_API_KEY_KEY);
+    const apiKey = manualApiKey || process.env.API_KEY;
+
+    if (!apiKey) {
+        throw new Error("Nenhuma chave de API configurada. Por favor, selecione uma chave de API segura ou insira uma manualmente na página de Ajustes.");
+    }
+    
+    return new GoogleGenAI({ apiKey: apiKey });
 }
 
 export async function parseBankStatementWithAI(statementText: string): Promise<{ date: string, description: string, amount: number }[]> {

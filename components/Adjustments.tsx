@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AVATAR_OPTIONS } from '../constants';
-import { KeyIcon, CheckCircleIcon, AlertTriangleIcon, SpinnerIcon, UploadIcon } from './Icons';
+import { KeyIcon, CheckCircleIcon, AlertTriangleIcon, SpinnerIcon, UploadIcon, TrashIcon } from './Icons';
 import { UserProfile } from '../types';
 
 declare global {
@@ -60,10 +60,18 @@ const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, us
     const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'set' | 'not_set'>('checking');
     const [profileForm, setProfileForm] = useState<UserProfile>(userProfile);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [manualKeyInput, setManualKeyInput] = useState('');
 
     useEffect(() => {
         setProfileForm(userProfile);
     }, [userProfile]);
+    
+    useEffect(() => {
+        const savedKey = localStorage.getItem('conciliaFacil_manualApiKey');
+        if (savedKey) {
+            setManualKeyInput(savedKey);
+        }
+    }, []);
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -142,6 +150,21 @@ const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, us
             alert("A funcionalidade de seleção de chave de API não está disponível neste ambiente. A inserção manual não é suportada por motivos de segurança.");
         }
     };
+    
+    const handleSaveManualKey = () => {
+        if (manualKeyInput.trim()) {
+            localStorage.setItem('conciliaFacil_manualApiKey', manualKeyInput.trim());
+            alert('Chave de API manual salva. Ela terá prioridade sobre a chave selecionada.');
+        } else {
+            alert('O campo da chave de API não pode estar vazio.');
+        }
+    };
+
+    const handleClearManualKey = () => {
+        localStorage.removeItem('conciliaFacil_manualApiKey');
+        setManualKeyInput('');
+        alert('Chave de API manual removida.');
+    };
 
     return (
         <div className="space-y-6">
@@ -166,6 +189,37 @@ const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, us
                     >
                         {apiKeyStatus === 'set' ? 'Alterar Chave de API' : 'Selecionar Chave de API'}
                     </button>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <h3 className="text-md font-semibold text-slate-800 dark:text-slate-200">Inserção Manual (Não Recomendado)</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-prose">
+                        Se a opção segura acima não estiver disponível, você pode inserir sua chave de API manualmente. Esteja ciente de que armazenar chaves no navegador é menos seguro. A chave manual terá prioridade sobre a chave selecionada.
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                        <input 
+                            type="password"
+                            placeholder="Cole sua chave de API aqui"
+                            value={manualKeyInput}
+                            onChange={(e) => setManualKeyInput(e.target.value)}
+                            className="block w-full max-w-sm rounded-md border-0 py-1.5 pl-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-teal-600 sm:text-sm"
+                        />
+                        <button
+                            onClick={handleSaveManualKey}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                        >
+                            Salvar
+                        </button>
+                        {manualKeyInput && (
+                             <button
+                                onClick={handleClearManualKey}
+                                className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full"
+                                aria-label="Limpar chave manual"
+                            >
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
