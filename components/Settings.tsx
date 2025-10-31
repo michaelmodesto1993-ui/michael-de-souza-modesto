@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Account } from '../types';
-import { UploadIcon } from './Icons';
+import { UploadIcon, TrashIcon } from './Icons';
 import { parseChartOfAccountsWithAI } from '../services/geminiService';
 import * as XLSX from 'xlsx';
 
@@ -17,11 +17,21 @@ interface SettingsProps {
     onCustomAccountsChange: (accounts: Account[]) => void;
     activePlan: 'sped' | 'custom';
     onActivePlanChange: (plan: 'sped' | 'custom') => void;
+    onDeleteCustomAccount: (accountId: string) => void;
+    onClearCustomAccounts: () => void;
 }
 
 type Tab = 'sped' | 'custom';
 
-const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCustomAccountsChange, activePlan, onActivePlanChange }) => {
+const Settings: React.FC<SettingsProps> = ({ 
+    spedAccounts, 
+    customAccounts, 
+    onCustomAccountsChange, 
+    activePlan, 
+    onActivePlanChange,
+    onDeleteCustomAccount,
+    onClearCustomAccounts
+}) => {
     const [activeTab, setActiveTab] = useState<Tab>('sped');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -56,13 +66,24 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
         }
     }, [onCustomAccountsChange]);
 
-    const renderAccountList = (accounts: Account[]) => (
+    const renderAccountList = (accounts: Account[], onDelete?: (accountId: string) => void) => (
         <div className="mt-4 max-h-96 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
             <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {accounts.map(acc => (
-                    <li key={acc.id} className="p-3 flex justify-between items-center text-sm">
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{acc.name}</span>
-                        <span className="font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{acc.id}</span>
+                    <li key={acc.id} className="p-3 flex justify-between items-center text-sm group">
+                        <div>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{acc.name}</span>
+                            <span className="font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded ml-2">{acc.id}</span>
+                        </div>
+                        {onDelete && (
+                            <button 
+                                onClick={() => onDelete(acc.id)} 
+                                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                                aria-label={`Excluir conta ${acc.name}`}
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        )}
                     </li>
                 ))}
             </ul>
@@ -108,9 +129,20 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
                         </div>
                     ) : (
                         <div>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Carregue um arquivo (XLSX, CSV, OFX, TXT) com seu próprio plano de contas. A IA irá analisá-lo e preencher a lista abaixo.</p>
+                            <div className="flex flex-wrap justify-between items-start gap-4">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-prose">Carregue um arquivo (XLSX, CSV, OFX, TXT) com seu próprio plano de contas. A IA irá analisá-lo e preencher a lista abaixo.</p>
+                                {customAccounts.length > 0 && (
+                                     <button 
+                                        onClick={onClearCustomAccounts}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-semibold rounded-lg shadow-sm hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                                    >
+                                        <TrashIcon className="w-4 h-4" />
+                                        Excluir Plano Personalizado
+                                    </button>
+                                )}
+                            </div>
                             
-                            <label htmlFor="coa-upload" className="relative flex justify-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-600">
+                            <label htmlFor="coa-upload" className="relative flex justify-center w-full px-6 py-10 border-2 border-dashed rounded-lg cursor-pointer mt-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-600">
                                 {loading ? (
                                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
                                 ) : (
@@ -124,7 +156,7 @@ const Settings: React.FC<SettingsProps> = ({ spedAccounts, customAccounts, onCus
                             
                             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                             
-                            {customAccounts.length > 0 ? renderAccountList(customAccounts) : 
+                            {customAccounts.length > 0 ? renderAccountList(customAccounts, onDeleteCustomAccount) : 
                                 <p className="mt-4 text-sm text-slate-400 italic">Nenhum plano de contas personalizado carregado.</p>
                             }
                         </div>

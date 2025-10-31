@@ -2,23 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { AVATAR_OPTIONS } from '../constants';
 import { KeyIcon } from './Icons';
 
+// FIX: Moved the AIStudio interface into the `declare global` block to ensure it's
+// a single, globally-scoped type, which resolves the TypeScript error about
+// subsequent property declarations having conflicting types.
+declare global {
+    interface AIStudio {
+        hasSelectedApiKey: () => Promise<boolean>;
+        openSelectKey: () => Promise<void>;
+    }
+
+    interface Window {
+        aistudio?: AIStudio;
+    }
+}
+
 interface AdjustmentsProps {
     avatarUrl: string;
     onAvatarChange: (url: string) => void;
-    apiKey: string;
-    onApiKeyChange: (key: string) => void;
 }
 
-const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, apiKey, onApiKeyChange }) => {
+const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange }) => {
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
     const [fontSize, setFontSize] = useState(parseInt(localStorage.getItem('fontSize') || '100', 10));
     const [isAvatarModalOpen, setAvatarModalOpen] = useState(false);
-    const [currentApiKey, setCurrentApiKey] = useState(apiKey);
-    const [isKeyVisible, setIsKeyVisible] = useState(false);
-
-    useEffect(() => {
-        setCurrentApiKey(apiKey);
-    }, [apiKey]);
+    const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'set' | 'not_set'>('checking');
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -34,21 +41,37 @@ const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, ap
         document.documentElement.style.fontSize = `${fontSize}%`;
         localStorage.setItem('fontSize', fontSize.toString());
     }, [fontSize]);
+
+    useEffect(() => {
+        const checkApiKey = async () => {
+            if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+                try {
+                    const hasKey = await window.aistudio.hasSelectedApiKey();
+                    setApiKeyStatus(hasKey ? 'set' : 'not_set');
+                } catch (error) {
+                    console.error("Error checking API key status:", error);
+                    setApiKeyStatus('not_set');
+                }
+            } else {
+                setApiKeyStatus('not_set'); 
+            }
+        };
+        checkApiKey();
+    }, []);
     
     const handleSelectAvatar = (url: string) => {
         onAvatarChange(url);
         setAvatarModalOpen(false);
     };
 
-    const handleSaveKey = () => {
-        onApiKeyChange(currentApiKey);
-        alert('Chave de API salva com sucesso!');
-    };
-
-    const handleClearKey = () => {
-        setCurrentApiKey('');
-        onApiKeyChange('');
-        alert('Chave de API removida.');
+    const handleSelectKey = async () => {
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+            await window.aistudio.openSelectKey();
+            // Assume success and update UI immediately due to potential race condition
+            setApiKeyStatus('set');
+        } else {
+            alert("A funcionalidade de seleção de chave de API não está disponível neste ambiente.");
+        }
     };
 
     return (
@@ -56,55 +79,28 @@ const Adjustments: React.FC<AdjustmentsProps> = ({ avatarUrl, onAvatarChange, ap
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">Ajustes</h1>
 
             <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-center">
-                    <KeyIcon className="w-5 h-5 mr-2 text-slate-500" />
-                    Chave de API do Google Gemini
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <KeyIcon className="w-5 h-5" />
+                    Gerenciamento da Chave de API
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Sua chave de API é necessária para que as funcionalidades de inteligência artificial funcionem. Ela é salva localmente no seu navegador. Obtenha sua chave em{' '}
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-500 hover:underline">
-                        Google AI Studio
-                    </a>.
+                    Para usar a IA, você precisa selecionar uma chave de API do Google AI Studio. O uso da API pode incorrer em custos. 
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-500 hover:underline ml-1">
+                        Saiba mais sobre preços.
+                    </a>
                 </p>
-                <div className="mt-4">
-                    <label htmlFor="api-key" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Sua Chave de API
-                    </label>
-                    <div className="relative mt-1">
-                        <input
-                            type={isKeyVisible ? 'text' : 'password'}
-                            id="api-key"
-                            value={currentApiKey}
-                            onChange={(e) => setCurrentApiKey(e.target.value)}
-                            placeholder="Cole sua chave de API aqui"
-                            className="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200 pr-10"
-                        />
-                         <button
-                            type="button"
-                            onClick={() => setIsKeyVisible(!isKeyVisible)}
-                            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                            aria-label={isKeyVisible ? "Ocultar chave" : "Mostrar chave"}
-                        >
-                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                {isKeyVisible ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.243 4.243l-4.243-4.243" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.432 0 .639C20.577 16.49 16.64 19.5 12 19.5s-8.573-3.007-9.963-7.178z" />
-                                )}
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                           </svg>
-                        </button>
-                    </div>
-                </div>
-                <div className="mt-4 flex items-center justify-end space-x-3">
-                    {apiKey && (
-                        <button onClick={handleClearKey} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-                            Limpar Chave
-                        </button>
-                    )}
-                    <button onClick={handleSaveKey} className="px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-teal-700 disabled:bg-teal-300 disabled:cursor-not-allowed transition-colors">
-                        Salvar Chave
+                <div className="mt-4 flex items-center space-x-4">
+                    <button 
+                        onClick={handleSelectKey}
+                        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        {apiKeyStatus === 'set' ? 'Alterar Chave de API' : 'Selecionar Chave de API'}
                     </button>
+                    <div>
+                        {apiKeyStatus === 'checking' && <p className="text-sm text-slate-500 dark:text-slate-400">Verificando status...</p>}
+                        {apiKeyStatus === 'set' && <p className="text-sm text-green-600 dark:text-green-400 font-medium">Chave de API selecionada.</p>}
+                        {apiKeyStatus === 'not_set' && <p className="text-sm text-red-600 dark:text-red-400 font-medium">Nenhuma chave de API selecionada.</p>}
+                    </div>
                 </div>
             </div>
 

@@ -42,3 +42,9 @@ export interface ReconciliationEvent {
   account: Account;
   method: ReconciliationStatus.AUTOMATIC | ReconciliationStatus.MANUAL;
 }
+
+export interface SupportingDocument {
+  name: string;
+  content: string; // data URL
+  mimeType: string;
+}

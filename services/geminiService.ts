@@ -5,17 +5,12 @@
 // - To get JSON, set `responseMimeType: "application/json"` and provide a `responseSchema`.
 // - Extract text from the response with `response.text`.
 import { GoogleGenAI, Type } from "@google/genai";
-import { Account, LearningExample, Transaction, ReconciliationStatus } from '../types';
-
-const API_KEY_KEY = 'conciliaFacil_apiKey';
+import { Account, LearningExample, Transaction, ReconciliationStatus, SupportingDocument } from '../types';
 
 // Helper function to get an initialized AI client
 function getAiClient(): GoogleGenAI {
-    const apiKey = localStorage.getItem(API_KEY_KEY);
-    if (!apiKey) {
-        throw new Error("Chave de API não configurada. Por favor, adicione sua chave de API na página de Ajustes.");
-    }
-    return new GoogleGenAI({ apiKey });
+    // FIX: Per coding guidelines, API key must come from process.env.API_KEY
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
 export async function parseBankStatementWithAI(statementText: string): Promise<{ date: string, description: string, amount: number }[]> {
@@ -54,7 +49,7 @@ export async function parseBankStatementWithAI(statementText: string): Promise<{
     try {
         const result = JSON.parse(jsonText);
         return result;
-    } catch (e) {
+    } catch (e: any) {
         console.error("Erro ao fazer parse do JSON da IA:", e);
         throw new Error("A IA retornou um formato de JSON inválido.");
     }
@@ -103,7 +98,7 @@ export async function parseChartOfAccountsWithAI(fileContent: string): Promise<A
             return result;
         }
         throw new Error("O JSON retornado não corresponde ao esquema esperado.");
-    } catch (e) {
+    } catch (e: any) {
         console.warn("Falha ao parsear JSON, tentando reparar. Erro original:", e);
 
         try {
@@ -121,7 +116,7 @@ export async function parseChartOfAccountsWithAI(fileContent: string): Promise<A
                     return result;
                 }
             }
-        } catch (repairError) {
+        } catch (repairError: any) {
             console.error("A tentativa de reparo do JSON falhou:", repairError);
             // Fall through to throw the original error
         }
@@ -140,7 +135,8 @@ type ReconciliationSuggestion = {
 export async function reconcileTransactions(
     transactions: Transaction[],
     accounts: Account[],
-    learningExamples: LearningExample[]
+    learningExamples: LearningExample[],
+    supportingDocuments: SupportingDocument[]
 ): Promise<ReconciliationSuggestion[]> {
     const ai = getAiClient();
     const model = 'gemini-2.5-pro';
@@ -160,6 +156,12 @@ export async function reconcileTransactions(
         return [];
     }
 
+    const documentContextString = supportingDocuments.length > 0 ? `
+    ---
+    DOCUMENTOS DE APOIO:
+    Para te auxiliar, analise os seguintes documentos. Eles podem ser planilhas (com colunas de data, descrição, valor), comprovantes de pagamento (PDFs, imagens com informações do fornecedor, data, valor), ou outras informações relevantes. Cruce as informações destes documentos com as descrições e valores das transações do extrato para determinar a conta correta. Por exemplo, um comprovante de "Energia Elétrica" pode corresponder a um débito no extrato.
+    ` : '';
+
     const prompt = `
     Você é um assistente de contabilidade especialista. Sua tarefa é sugerir a conta contábil correta para cada uma das transações bancárias a seguir, com base no plano de contas brasileiro (SPED) fornecido.
     
@@ -171,6 +173,8 @@ export async function reconcileTransactions(
     Transações para Conciliar:
     ${JSON.stringify(transactionsToReconcile, null, 2)}
 
+    ${documentContextString}
+
     Analise cada transação e retorne a ID da conta mais apropriada do plano de contas.
     Responda com um array JSON de objetos, onde cada objeto contém "transactionId" e "accountId".
     
@@ -181,9 +185,31 @@ export async function reconcileTransactions(
     ]
     `;
 
+    const parts: any[] = [{ text: prompt }];
+
+    for (const doc of supportingDocuments) {
+        if (doc.mimeType === 'text/plain') {
+            // It's a spreadsheet/csv converted to text. Add as a text part.
+            parts.push({ text: doc.content });
+        } else {
+            // It's an image/pdf. Send as inlineData.
+            // Data URL format: "data:[<mime-type>];base64,[<data>]"
+            const base64Data = doc.content.split(',')[1];
+            if (base64Data) {
+                parts.push({
+                    inlineData: {
+                        mimeType: doc.mimeType,
+                        data: base64Data
+                    }
+                });
+            }
+        }
+    }
+
+
     const response = await ai.models.generateContent({
         model,
-        contents: prompt,
+        contents: { parts: parts },
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -198,7 +224,7 @@ export async function reconcileTransactions(
                 }
             },
             maxOutputTokens: 8192,
-            thinkingConfig: { thinkingBudget: 192 },
+            thinkingConfig: { thinkingBudget: 1024 },
         },
     });
 
@@ -211,7 +237,7 @@ export async function reconcileTransactions(
             accounts.some(acc => acc.id === suggestion.accountId) &&
             transactionsToReconcile.some(tx => tx.id === suggestion.transactionId)
         );
-    } catch (e) {
+    } catch (e: any) {
         console.error("Erro ao fazer parse do JSON da IA para conciliação:", e);
         throw new Error("A IA retornou um formato de JSON inválido para a conciliação.");
     }

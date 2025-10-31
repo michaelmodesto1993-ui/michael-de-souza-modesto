@@ -6,7 +6,7 @@ import Adjustments from './components/Adjustments';
 import Import from './components/Import';
 import History from './components/History';
 
-import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType } from './types';
+import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType, SupportingDocument } from './types';
 import { SPED_CHART_OF_ACCOUNTS, AVATAR_OPTIONS } from './constants';
 import { reconcileTransactions } from './services/geminiService';
 
@@ -17,7 +17,6 @@ const LEARNING_EXAMPLES_KEY = 'conciliaFacil_learningExamples';
 const CUSTOM_ACCOUNTS_KEY = 'conciliaFacil_customAccounts';
 const ACTIVE_PLAN_KEY = 'conciliaFacil_activePlan';
 const AVATAR_URL_KEY = 'conciliaFacil_avatarUrl';
-const API_KEY_KEY = 'conciliaFacil_apiKey';
 
 
 function App() {
@@ -30,7 +29,7 @@ function App() {
   
   const [learningExamples, setLearningExamples] = useState<LearningExample[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(AVATAR_OPTIONS[0]);
-  const [apiKey, setApiKey] = useState<string>('');
+  const [supportingDocuments, setSupportingDocuments] = useState<SupportingDocument[]>([]);
 
 
   const [loading, setLoading] = useState(false);
@@ -53,10 +52,7 @@ function App() {
       const storedAvatar = localStorage.getItem(AVATAR_URL_KEY);
       if (storedAvatar) setAvatarUrl(storedAvatar);
 
-      const storedApiKey = localStorage.getItem(API_KEY_KEY);
-      if (storedApiKey) setApiKey(storedApiKey);
-
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load data from localStorage", e);
     }
   }, []);
@@ -72,6 +68,22 @@ function App() {
     localStorage.setItem(CUSTOM_ACCOUNTS_KEY, JSON.stringify(newAccounts));
   }
 
+  const handleDeleteCustomAccount = (accountId: string) => {
+    setCustomAccounts(prev => {
+        const updated = prev.filter(acc => acc.id !== accountId);
+        localStorage.setItem(CUSTOM_ACCOUNTS_KEY, JSON.stringify(updated));
+        return updated;
+    });
+  };
+
+  const handleClearCustomAccounts = () => {
+    if (window.confirm("Você tem certeza que deseja excluir todo o seu plano de contas personalizado? Esta ação não pode ser desfeita.")) {
+        setCustomAccounts([]);
+        localStorage.setItem(CUSTOM_ACCOUNTS_KEY, JSON.stringify([]));
+    }
+  };
+
+
   const handleSetActivePlan = (plan: AccountPlan) => {
     setActivePlan(plan);
     localStorage.setItem(ACTIVE_PLAN_KEY, plan);
@@ -82,11 +94,6 @@ function App() {
     localStorage.setItem(AVATAR_URL_KEY, url);
   };
   
-  const handleSetApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem(API_KEY_KEY, key);
-  };
-
   const handleDeleteLearningExample = (exampleId: string) => {
     setLearningExamples(prev => {
         const updated = prev.filter(ex => ex.id !== exampleId);
@@ -94,6 +101,19 @@ function App() {
         return updated;
     });
   };
+
+  const handleAddSupportingDocuments = (newDocs: SupportingDocument[]) => {
+    setSupportingDocuments(prev => {
+        const existingNames = new Set(prev.map(d => d.name));
+        const uniqueNewDocs = newDocs.filter(d => !existingNames.has(d.name));
+        return [...prev, ...uniqueNewDocs];
+    });
+  };
+
+  const handleRemoveSupportingDocument = (docName: string) => {
+    setSupportingDocuments(prev => prev.filter(d => d.name !== docName));
+  };
+
 
   const handleUpdateTransaction = useCallback((transactionId: string, accountId: string | null) => {
     setTransactions(currentTransactions => {
@@ -145,12 +165,36 @@ function App() {
     });
   }, []);
 
+  const handleUpdateTransactionDescription = useCallback((transactionId: string, newDescription: string) => {
+    const originalTransaction = transactions.find(t => t.id === transactionId);
+    if (!originalTransaction) return;
+
+    setTransactions(currentTransactions =>
+      currentTransactions.map(tx =>
+        tx.id === transactionId ? { ...tx, description: newDescription } : tx
+      )
+    );
+    
+    // Update learning examples that were based on the old description
+    setLearningExamples(prev => {
+      const updated = prev.map(ex => {
+          if (ex.description === originalTransaction.description) {
+              return { ...ex, description: newDescription };
+          }
+          return ex;
+      });
+      localStorage.setItem(LEARNING_EXAMPLES_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [transactions]);
+
+
   const handleReconcile = async () => {
     setLoading(true);
-    setLoadingMessage('A IA está analisando suas transações...');
+    setLoadingMessage('A IA está analisando suas transações e documentos...');
     setError(null);
     try {
-      const suggestions = await reconcileTransactions(transactions, accounts, learningExamples);
+      const suggestions = await reconcileTransactions(transactions, accounts, learningExamples, supportingDocuments);
       
       setTransactions(currentTransactions => {
         const updatedTransactions = currentTransactions.map(tx => {
@@ -185,8 +229,12 @@ function App() {
             transactions={transactions}
             accounts={accounts}
             onUpdateTransaction={handleUpdateTransaction}
+            onUpdateTransactionDescription={handleUpdateTransactionDescription}
             onReconcile={handleReconcile}
             setPage={setPage}
+            supportingDocuments={supportingDocuments}
+            onSupportingDocumentsUpload={handleAddSupportingDocuments}
+            onRemoveSupportingDocument={handleRemoveSupportingDocument}
         />;
       case 'import':
         return <Import 
@@ -208,13 +256,13 @@ function App() {
             onCustomAccountsChange={handleSetCustomAccounts}
             activePlan={activePlan}
             onActivePlanChange={handleSetActivePlan}
+            onDeleteCustomAccount={handleDeleteCustomAccount}
+            onClearCustomAccounts={handleClearCustomAccounts}
         />;
       case 'adjustments':
         return <Adjustments 
           avatarUrl={avatarUrl}
           onAvatarChange={handleSetAvatarUrl}
-          apiKey={apiKey}
-          onApiKeyChange={handleSetApiKey}
         />;
       default:
         return <div>Página não encontrada</div>;

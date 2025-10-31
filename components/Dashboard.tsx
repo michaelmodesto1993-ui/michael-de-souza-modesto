@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Transaction, Account, ReconciliationStatus, TransactionType } from '../types';
+import { Transaction, Account, ReconciliationStatus, TransactionType, SupportingDocument } from '../types';
 import TransactionTable from './TransactionTable';
+import SupportingDocumentsUpload from './SupportingDocumentsUpload';
 import { BrainCircuitIcon, CheckCircleIcon, AlertTriangleIcon, ListIcon, ImportIcon, FileDownIcon } from './Icons';
 import { Page } from '../App';
 import * as XLSX from 'xlsx';
@@ -18,8 +19,12 @@ interface DashboardProps {
     transactions: Transaction[];
     accounts: Account[];
     onUpdateTransaction: (transactionId: string, accountId: string | null) => void;
+    onUpdateTransactionDescription: (transactionId: string, newDescription: string) => void;
     onReconcile: () => void;
     setPage: (page: Page) => void;
+    supportingDocuments: SupportingDocument[];
+    onSupportingDocumentsUpload: (files: SupportingDocument[]) => void;
+    onRemoveSupportingDocument: (fileName: string) => void;
 }
 
 const StatCard: React.FC<{ title: string; value: string; subtext: string; icon: React.ReactNode }> = ({ title, value, subtext, icon }) => (
@@ -37,8 +42,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     transactions,
     accounts,
     onUpdateTransaction,
+    onUpdateTransactionDescription,
     onReconcile,
-    setPage
+    setPage,
+    supportingDocuments,
+    onSupportingDocumentsUpload,
+    onRemoveSupportingDocument,
 }) => {
     const [doubleEntryAccountId, setDoubleEntryAccountId] = useState<string>('');
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -177,6 +186,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                     </div>
                 </div>
+                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <SupportingDocumentsUpload 
+                        documents={supportingDocuments}
+                        onUpload={onSupportingDocumentsUpload}
+                        onRemove={onRemoveSupportingDocument}
+                    />
+                </div>
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Conta de Partida Dobrada (Banco)</label>
                      <select
@@ -196,6 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     transactions={transactions} 
                     accounts={accounts} 
                     onUpdateTransaction={onUpdateTransaction} 
+                    onUpdateTransactionDescription={onUpdateTransactionDescription}
                 />
             </div>
         </div>
