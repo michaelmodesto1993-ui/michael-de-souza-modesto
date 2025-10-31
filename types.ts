@@ -45,6 +45,12 @@ export interface ReconciliationEvent {
 
 export interface SupportingDocument {
   name: string;
-  content: string; // data URL
+  content: string; // can be data URL for images/pdfs or raw text for spreadsheets
   mimeType: string;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
 }

@@ -1,11 +1,13 @@
 import React from 'react';
 import { LogoIcon, DashboardIcon, ImportIcon, SettingsIcon, AdjustmentsIcon, BrainCircuitIcon } from './Icons';
 import { Page } from '../App';
+import { UserProfile } from '../types';
 
 interface SidebarProps {
   currentPage: Page;
   setPage: (page: Page) => void;
   avatarUrl: string;
+  userProfile: UserProfile;
 }
 
 const Avatar: React.FC<{ src: string }> = ({ src }) => (
@@ -42,7 +44,7 @@ const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
     { id: 'adjustments', label: 'Ajustes', icon: <AdjustmentsIcon className="w-5 h-5" /> },
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl, userProfile }) => {
   return (
     <aside className="flex flex-col w-64 bg-slate-900 text-white h-full shadow-2xl flex-shrink-0">
       <div className="flex items-center justify-center h-20 border-b border-slate-700/50">
@@ -65,8 +67,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setPage, avatarUrl }) =>
         <div className="flex items-center">
             <Avatar src={avatarUrl} />
             <div className="ml-3">
-                <p className="text-sm font-semibold text-slate-200">Usuário</p>
-                <p className="text-xs text-slate-400">Plano Padrão</p>
+                <p className="text-sm font-semibold text-slate-200 truncate">{userProfile.name}</p>
+                <p className="text-xs text-slate-400 truncate">{userProfile.role}</p>
             </div>
         </div>
       </div>

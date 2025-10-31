@@ -6,7 +6,7 @@ import Adjustments from './components/Adjustments';
 import Import from './components/Import';
 import History from './components/History';
 
-import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType, SupportingDocument } from './types';
+import { Transaction, Account, LearningExample, ReconciliationStatus, TransactionType, SupportingDocument, UserProfile } from './types';
 import { SPED_CHART_OF_ACCOUNTS, AVATAR_OPTIONS } from './constants';
 import { reconcileTransactions } from './services/geminiService';
 
@@ -17,6 +17,7 @@ const LEARNING_EXAMPLES_KEY = 'conciliaFacil_learningExamples';
 const CUSTOM_ACCOUNTS_KEY = 'conciliaFacil_customAccounts';
 const ACTIVE_PLAN_KEY = 'conciliaFacil_activePlan';
 const AVATAR_URL_KEY = 'conciliaFacil_avatarUrl';
+const USER_PROFILE_KEY = 'conciliaFacil_userProfile';
 
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
   const [learningExamples, setLearningExamples] = useState<LearningExample[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(AVATAR_OPTIONS[0]);
   const [supportingDocuments, setSupportingDocuments] = useState<SupportingDocument[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile>({ name: 'Usuário', email: '', role: 'Plano Padrão' });
 
 
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,9 @@ function App() {
 
       const storedAvatar = localStorage.getItem(AVATAR_URL_KEY);
       if (storedAvatar) setAvatarUrl(storedAvatar);
+      
+      const storedProfile = localStorage.getItem(USER_PROFILE_KEY);
+      if (storedProfile) setUserProfile(JSON.parse(storedProfile));
 
     } catch (e: any) {
       console.error("Failed to load data from localStorage", e);
@@ -94,6 +99,11 @@ function App() {
     localStorage.setItem(AVATAR_URL_KEY, url);
   };
   
+  const handleSetUserProfile = (profile: UserProfile) => {
+    setUserProfile(profile);
+    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+  };
+
   const handleDeleteLearningExample = (exampleId: string) => {
     setLearningExamples(prev => {
         const updated = prev.filter(ex => ex.id !== exampleId);
@@ -263,6 +273,8 @@ function App() {
         return <Adjustments 
           avatarUrl={avatarUrl}
           onAvatarChange={handleSetAvatarUrl}
+          userProfile={userProfile}
+          onUserProfileChange={handleSetUserProfile}
         />;
       default:
         return <div>Página não encontrada</div>;
@@ -271,7 +283,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-100 dark:bg-slate-50 font-sans">
-      <Sidebar currentPage={currentPage} setPage={setPage} avatarUrl={avatarUrl} />
+      <Sidebar currentPage={currentPage} setPage={setPage} avatarUrl={avatarUrl} userProfile={userProfile} />
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-slate-50 dark:bg-slate-900">
         {loading && (
           <div className="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center z-50">
